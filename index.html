@@ -2,26 +2,116 @@
 <html lang="mr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Tu & Me 💖</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to bottom, #ffe6f0, #ffc2d1);
+      margin: 0; padding: 0;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #ff80ab;
+      padding: 1rem;
+      color: white;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    .messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 15px;
+      max-width: 70%;
+      word-wrap: break-word;
+    }
+    .mine {
+      background: #ffd1dc;
+      align-self: flex-end;
+    }
+    .theirs {
+      background: #fff0f5;
+      align-self: flex-start;
+    }
+    .input-area {
+      display: flex;
+      padding: 10px;
+      background: white;
+    }
+    .input-area input[type="text"] {
+      flex: 1;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-right: 5px;
+    }
+    .input-area input[type="file"] {
+      display: none;
+    }
+    .input-area button, label {
+      background: #ff80ab;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .login {
+      text-align: center;
+      margin-top: 30%;
+    }
+    .login input {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+    img.chat-img {
+      max-width: 200px;
+      border-radius: 10px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="chatContainer" style="display:none;">
+    <header>Tu & Me 💖</header>
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <label for="photo">📷</label>
+      <input type="file" id="photo" />
+      <input type="text" id="textMessage" placeholder="लिहा काही प्रेमळ..." />
+      <button onclick="sendMessage()">पाठव</button>
+    </div>
+  </div>
+
+  <div class="login" id="loginBox">
+    <h2>Login to Tu & Me 💞</h2>
+    <input type="email" id="email" placeholder="ईमेल"/>
+    <input type="password" id="password" placeholder="पासवर्ड"/>
+    <br/>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import {
-      getDatabase,
-      ref,
-      push,
-      onChildAdded
-    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-    import {
-      getAuth,
-      signInWithEmailAndPassword
-    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import {
-      getStorage,
-      ref as sRef,
-      uploadBytes,
-      getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBKhKJ8UfBC0p_ZkxQlTHAraHyzx_yanVM",
@@ -33,54 +123,58 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
     const auth = getAuth(app);
+    const db = getDatabase(app);
     const storage = getStorage(app);
 
-    let currentUser = null;
+    let currentUser = "";
 
-    document.getElementById("loginForm").addEventListener("submit", e => {
-      e.preventDefault();
+    window.login = () => {
       const email = document.getElementById("email").value;
       const pass = document.getElementById("password").value;
-
       signInWithEmailAndPassword(auth, email, pass).then(userCred => {
         currentUser = userCred.user.email;
         document.getElementById("loginBox").style.display = "none";
         document.getElementById("chatContainer").style.display = "flex";
         listenForMessages();
-      }).catch(err => alert("Login failed"));
-    });
+      }).catch(err => alert("Login failed: " + err.message));
+    };
 
-    document.getElementById("msgForm").addEventListener("submit", e => {
-      e.preventDefault();
-      const msg = document.getElementById("message").value;
-      push(ref(db, "messages"), {
-        sender: currentUser,
-        text: msg,
-        type: "text"
-      });
-      document.getElementById("message").value = "";
-    });
+    window.sendMessage = () => {
+      const msg = document.getElementById("textMessage").value.trim();
+      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    document.getElementById("photoInput").addEventListener("change", async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const storageRef = sRef(storage, 'images/' + Date.now() + file.name);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      push(ref(db, "messages"), {
-        sender: currentUser,
-        type: "image",
-        imageUrl: url
-      });
-    });
+      if (msg !== "") {
+        push(ref(db, "messages"), {
+          sender: currentUser,
+          text: msg,
+          type: "text",
+          time: timestamp
+        });
+        document.getElementById("textMessage").value = "";
+      }
+
+      const file = document.getElementById("photo").files[0];
+      if (file) {
+        const storageRef = sRef(storage, 'images/' + Date.now() + "_" + file.name);
+        uploadBytes(storageRef, file).then(snapshot => {
+          getDownloadURL(snapshot.ref).then(url => {
+            push(ref(db, "messages"), {
+              sender: currentUser,
+              imageUrl: url,
+              type: "image",
+              time: timestamp
+            });
+          });
+        });
+        document.getElementById("photo").value = "";
+      }
+    };
 
     function listenForMessages() {
       const msgBox = document.getElementById("messages");
-      const dbRef = ref(db, "messages");
-      onChildAdded(dbRef, snapshot => {
-        const msg = snapshot.val();
+      onChildAdded(ref(db, "messages"), (data) => {
+        const msg = data.val();
         const div = document.createElement("div");
         div.className = "message " + (msg.sender === currentUser ? "mine" : "theirs");
 
@@ -93,99 +187,18 @@
           div.appendChild(img);
         }
 
+        const time = document.createElement("small");
+        time.innerText = msg.time || "";
+        time.style.display = "block";
+        time.style.marginTop = "5px";
+        time.style.fontSize = "0.75rem";
+        time.style.color = "#555";
+        div.appendChild(time);
+
         msgBox.appendChild(div);
         msgBox.scrollTop = msgBox.scrollHeight;
       });
     }
   </script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background-color: #ffe6f0;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    #chatContainer {
-      display: none;
-      flex-direction: column;
-      width: 95%;
-      max-width: 400px;
-      background: #fff0f5;
-      border-radius: 20px;
-      box-shadow: 0 0 15px #ff99cc;
-      overflow: hidden;
-    }
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-    }
-    .message {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 10px;
-      max-width: 80%;
-    }
-    .mine {
-      background: #ffb6c1;
-      align-self: flex-end;
-    }
-    .theirs {
-      background: #ffe4e1;
-      align-self: flex-start;
-    }
-    .chat-img {
-      max-width: 100%;
-      border-radius: 10px;
-    }
-    form {
-      display: flex;
-      gap: 5px;
-      padding: 10px;
-      background: #fff0f5;
-    }
-    input[type="text"] {
-      flex: 1;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-    }
-    input[type="file"] {
-      display: none;
-    }
-    #photoLabel {
-      cursor: pointer;
-    }
-    #loginBox {
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #ff99cc;
-    }
-  </style>
-</head>
-<body>
-  <div id="loginBox">
-    <h2>Tu & Me ❤️ Login</h2>
-    <form id="loginForm">
-      <input type="email" id="email" placeholder="तुझं ईमेल" required /><br /><br />
-      <input type="password" id="password" placeholder="पासवर्ड" required /><br /><br />
-      <button type="submit">लॉगिन करा</button>
-    </form>
-  </div>
-
-  <div id="chatContainer">
-    <div id="messages"></div>
-    <form id="msgForm">
-      <input type="text" id="message" placeholder="तिच्यासाठी काही तरी गोड लिही..." />
-      <label for="photoInput" id="photoLabel">📷</label>
-      <input type="file" id="photoInput" accept="image/*" />
-      <button type="submit">पाठवा</button>
-    </form>
-  </div>
 </body>
 </html>
