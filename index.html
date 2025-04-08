@@ -47,10 +47,12 @@
       background: #fff0f5;
       align-self: flex-start;
     }
-    .seen-status {
-      font-size: 0.65rem;
-      color: #888;
-      margin-top: 3px;
+    .seen {
+      font-size: 0.6rem;
+      color: #666;
+      position: absolute;
+      bottom: 2px;
+      right: 10px;
     }
     .input-area {
       display: flex;
@@ -116,7 +118,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getDatabase, ref, push, onChildAdded, onValue, update } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded, update } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -125,8 +127,7 @@
       projectId: "tuandme-433de",
       storageBucket: "tuandme-433de.appspot.com",
       messagingSenderId: "198300152776",
-      appId: "1:198300152776:web:972ecf7fda6248484446fd",
-      databaseURL: "https://tuandme-433de-default-rtdb.firebaseio.com"
+      appId: "1:198300152776:web:972ecf7fda6248484446fd"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -144,6 +145,7 @@
         document.getElementById("loginBox").style.display = "none";
         document.getElementById("chatContainer").style.display = "flex";
         listenForMessages();
+        markMessagesAsSeen();
       }).catch(err => alert("Login failed: " + err.message));
     };
 
@@ -182,9 +184,7 @@
 
     function listenForMessages() {
       const msgBox = document.getElementById("messages");
-      const messagesRef = ref(db, "messages");
-
-      onChildAdded(messagesRef, (data) => {
+      onChildAdded(ref(db, "messages"), (data) => {
         const msg = data.val();
         const div = document.createElement("div");
         div.className = "message " + (msg.sender === currentUser ? "mine" : "theirs");
@@ -206,20 +206,25 @@
         time.style.color = "#555";
         div.appendChild(time);
 
-        // Add seen status for sender
-        if (msg.sender === currentUser) {
-          const seenStatus = document.createElement("div");
-          seenStatus.className = "seen-status";
-          seenStatus.innerText = msg.seen ? "Seen ❤" : "Unseen";
-          div.appendChild(seenStatus);
-        } else {
-          // Mark message as seen if it's not from current user
-          update(ref(db, `messages/${data.key}`), { seen: true });
+        if (msg.sender === currentUser && msg.seen) {
+          const seenText = document.createElement("div");
+          seenText.className = "seen";
+          seenText.innerText = "✅ Seen";
+          div.appendChild(seenText);
         }
 
         msgBox.appendChild(div);
         msgBox.scrollTop = msgBox.scrollHeight;
+
+        if (msg.sender !== currentUser && !msg.seen) {
+          update(ref(db, `messages/${data.key}`), { seen: true });
+        }
       });
+    }
+
+    function markMessagesAsSeen() {
+      // This will be triggered once user logs in and messages load
+      // Handled inside listenForMessages to mark individual unseen messages as seen
     }
   </script>
 </body>
